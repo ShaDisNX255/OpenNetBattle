@@ -13,7 +13,11 @@
 #ifdef SFML_SYSTEM_ANDROID
     enum class ShaderType : int {
         DEFAULT = 0,
+        ADDITIVE,
+        BATTLE_CHARACTER,
+        BLACK,
         BLACK_FADE,
+        COLORIZE,
         CUSTOM_BAR,
         GREYSCALE,
         OUTLINE,
@@ -29,6 +33,9 @@
         TRANSITION,
         CHIP_REVEAL,
         BADGE_WIRE,
+        GRADIENT,
+        MINIMAP_COLOR,
+        MINIMAP_EDGE,
         SHADER_TYPE_SIZE
     };
 #else

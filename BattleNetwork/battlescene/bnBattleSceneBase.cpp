@@ -1,3 +1,6 @@
+#ifdef __ANDROID__
+#include "../Android/bnTouchArea.h"
+#endif
 #include "bnBattleSceneBase.h"
 
 #include <assert.h>
@@ -585,16 +588,6 @@ void BattleSceneBase::FilterSupportCards(const std::shared_ptr<Player>& player, 
     }
   }
 }
-
-#ifdef __ANDROID__
-void BattleSceneBase::SetupTouchControls() {
-
-}
-
-void BattleSceneBase::ShutdownTouchControls() {
-
-}
-#endif
 
 void BattleSceneBase::DrawCustGauage(sf::RenderTexture& surface)
 {
@@ -1448,13 +1441,13 @@ void BattleSceneBase::SetupTouchControls() {
   rightSide.enableExtendedRelease(true);
   releasedB = false;
 
-  rightSide.onTouch([]() {
-    INPUTx.VirtualKeyEvent(InputEvent::RELEASED_A);
+  rightSide.onTouch([this]() {
+    Input().VirtualKeyEvent(InputEvents::released_use_chip);
     });
 
   rightSide.onRelease([this](sf::Vector2i delta) {
     if (!releasedB) {
-      INPUTx.VirtualKeyEvent(InputEvent::PRESSED_A);
+      Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
     }
 
     releasedB = false;
@@ -1463,8 +1456,8 @@ void BattleSceneBase::SetupTouchControls() {
 
   rightSide.onDrag([this](sf::Vector2i delta) {
     if (delta.x < -25 && !releasedB) {
-      INPUTx.VirtualKeyEvent(InputEvent::PRESSED_B);
-      INPUTx.VirtualKeyEvent(InputEvent::RELEASED_B);
+      Input().VirtualKeyEvent(InputEvents::pressed_shoot);
+      Input().VirtualKeyEvent(InputEvents::released_shoot);
       releasedB = true;
     }
     });
@@ -1474,38 +1467,38 @@ void BattleSceneBase::SetupTouchControls() {
     });
 
   TouchArea& custSelectButton = TouchArea::create(sf::IntRect(100, 0, 380, 100));
-  custSelectButton.onTouch([]() {
-    INPUTx.VirtualKeyEvent(InputEvent::PRESSED_START);
+  custSelectButton.onTouch([this]() {
+    Input().VirtualKeyEvent(InputEvents::pressed_pause);
     });
-  custSelectButton.onRelease([](sf::Vector2i delta) {
-    INPUTx.VirtualKeyEvent(InputEvent::RELEASED_START);
+  custSelectButton.onRelease([this](sf::Vector2i delta) {
+    Input().VirtualKeyEvent(InputEvents::released_pause);
     });
 
   TouchArea& dpad = TouchArea::create(sf::IntRect(0, 0, 240, 320));
   dpad.enableExtendedRelease(true);
-  dpad.onDrag([](sf::Vector2i delta) {
-    Logger::Log("dpad delta: " + std::to_string(delta.x) + ", " + std::to_string(delta.y));
+  dpad.onDrag([this](sf::Vector2i delta) {
+    Logger::Log(LogLevel::debug, ("dpad delta: " + std::to_string(delta.x) + ", " + std::to_string(delta.y)));
 
     if (delta.x > 30) {
-      INPUTx.VirtualKeyEvent(InputEvent::PRESSED_RIGHT);
+      Input().VirtualKeyEvent(InputEvents::pressed_move_right);
     }
 
     if (delta.x < -30) {
-      INPUTx.VirtualKeyEvent(InputEvent::PRESSED_LEFT);
+      Input().VirtualKeyEvent(InputEvents::pressed_move_left);
     }
 
     if (delta.y > 30) {
-      INPUTx.VirtualKeyEvent(InputEvent::PRESSED_DOWN);
+      Input().VirtualKeyEvent(InputEvents::pressed_move_down);
     }
 
     if (delta.y < -30) {
-      INPUTx.VirtualKeyEvent(InputEvent::PRESSED_UP);
+      Input().VirtualKeyEvent(InputEvents::pressed_move_up);
     }
     });
 
-  dpad.onRelease([](sf::Vector2i delta) {
+  dpad.onRelease([this](sf::Vector2i delta) {
     if (delta.x < -30) {
-      INPUTx.VirtualKeyEvent(InputEvent::RELEASED_LEFT);
+      Input().VirtualKeyEvent(InputEvents::released_move_left);
     }
     });
 }
