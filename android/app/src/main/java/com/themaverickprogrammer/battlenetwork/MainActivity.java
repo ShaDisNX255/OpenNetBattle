@@ -1,65 +1,75 @@
 package com.themaverickprogrammer.battlenetwork;
 
-import android.app.NativeActivity;
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 
-public class MainActivity extends NativeActivity {
+public class MainActivity extends Activity {
     private View decorView;
+    private SurfaceView surfaceView;
 
-    // Used to load the 'native-lib' library on application startup.
     static {
+        System.loadLibrary("fluidsynth");
         System.loadLibrary("native-lib");
-    }
-
-    public void hideSystemUI() {
-        // Set the IMMERSIVE flag.
-        // Set the content to appear under the system bars so that the content
-        // doesn't resize when the system bars hide and show.
-        decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        decorView = getWindow().getDecorView();
-
-        final MainActivity activityPtr = this;
-
-        decorView.setOnSystemUiVisibilityChangeListener(
-
-                new View.OnSystemUiVisibilityChangeListener() {
-                        @Override
-                        public void onSystemUiVisibilityChange(int visibility) {
-                            new Handler().postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    hideSystemUI();
-                                }
-                            }, 5000);
-                        }
-                });
-
-
         super.onCreate(savedInstanceState);
+
+        // Set up immersive fullscreen UI
+        decorView = getWindow().getDecorView();
+        decorView.setOnSystemUiVisibilityChangeListener(visibility ->
+                new Handler().postDelayed(this::hideSystemUI, 5000)
+        );
+        hideSystemUI();
+
+        // Create and display a SurfaceView for SFML to render into
+        surfaceView = new SurfaceView(this);
+        setContentView(surfaceView);
+
+        // Wait for the surface to become available
+        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                Surface surface = holder.getSurface();
+                if (surface != null && surface.isValid()) {
+                    setNativeWindow(surface);   // 👈 pass surface to SFML
+                    startGame();                // 👈 now call C++ entry point
+                }
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {}
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {}
+        });
     }
 
     @Override
     protected void onResume() {
         hideSystemUI();
-
         super.onResume();
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    public native String stringFromJNI();
+    private void hideSystemUI() {
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_IMMERSIVE
+        );
+    }
+
+    // 👇 Native methods implemented in C++
+    private native void setNativeWindow(Surface surface);
+    private native void startGame();
 }
+

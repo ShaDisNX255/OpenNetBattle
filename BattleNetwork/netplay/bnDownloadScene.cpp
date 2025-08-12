@@ -37,6 +37,22 @@ DownloadScene::DownloadScene(swoosh::ActivityController& ac, const DownloadScene
   std::sort(playerBlockPackageList.begin(), playerBlockPackageList.end());
   playerBlockPackageList.erase(std::unique(playerBlockPackageList.begin(), playerBlockPackageList.end()), playerBlockPackageList.end());
 
+  std::string working = "Cards:";
+  for (int i = 0; i < playerCardPackageList.size(); i++) {
+    auto p = playerCardPackageList.at(i);
+    working = working + "\n    " + p.packageId + " (" + p.md5 + ")";
+  }
+
+  Logger::Log(LogLevel::net, working);
+
+  working = "Blocks:";
+  for (int i = 0; i < playerBlockPackageList.size(); i++) {
+    auto p = playerBlockPackageList.at(i);
+    working = working + "\n    " + p.packageId + " (" + p.md5 + ")";
+  }
+
+  Logger::Log(LogLevel::net, working);
+
   downloadSuccess = false; 
 
   packetProcessor = props.packetProcessor;
@@ -90,6 +106,8 @@ void DownloadScene::SendHandshake()
   // create a new seed based on the time to avoid using the same seed every battle
   mySeed = (unsigned int)time(0);
   writer.Write<uint32_t>(buffer, mySeed);
+
+  writer.WriteTerminatedString(buffer, Game::Version);
 
   uint64_t id = packetProcessor->SendPacket(Reliability::ReliableOrdered, buffer).second;
   packetProcessor->UpdateHandshakeID(id);
@@ -339,6 +357,7 @@ void DownloadScene::RecieveTradeCardPackageData(const Poco::Buffer<char>& buffer
   std::vector<PackageHash> packageCardList = DeserializeListOfHashes(buffer);
   std::vector<std::string> requestList;
   CardPackageManager& packageManager = LocalCardPartition();
+
   for (PackageHash& remotePackage : packageCardList) {
     auto& [packageId, md5] = remotePackage;
 
@@ -357,6 +376,10 @@ void DownloadScene::RecieveTradeCardPackageData(const Poco::Buffer<char>& buffer
   if (requestList.size()) {
     remoteCardPackageList = requestList;
     Logger::Logf(LogLevel::info, "Need to download %d card packages", requestList.size());
+    std::string needed = "Cards needed:";
+    for (int i = 0; i < requestList.size(); i++) {
+      needed = needed + "\n" + requestList[i];
+    }
     RequestCardPackageList(requestList);
   }
   else {
@@ -370,6 +393,7 @@ void DownloadScene::RecieveTradeBlockPackageData(const Poco::Buffer<char>& buffe
   std::vector<PackageHash> packageBlockList = DeserializeListOfHashes(buffer);
   std::vector<std::string> requestList;
   BlockPackageManager& packageManager = LocalBlockPartition();
+
   for (PackageHash& remotePackage : packageBlockList) {
     auto& [packageId, md5] = remotePackage;
 
@@ -391,6 +415,12 @@ void DownloadScene::RecieveTradeBlockPackageData(const Poco::Buffer<char>& buffe
   // move to the next state
   if (requestList.size()) {
     Logger::Logf(LogLevel::info, "Need to download %d block packages", requestList.size());
+    std::string needed = "Blocks needed:";
+    for (int i = 0; i < requestList.size(); i++) {
+      needed = needed + "\n" + requestList[i];
+    }
+
+    Logger::Log(LogLevel::net, needed);
     RequestBlockPackageList(requestList);
   }
   else {
@@ -402,8 +432,18 @@ void DownloadScene::RecieveTradeBlockPackageData(const Poco::Buffer<char>& buffe
 void DownloadScene::RecieveHandshake(const Poco::Buffer<char>& buffer)
 {
   BufferReader reader;
+ 
   unsigned int seed = reader.Read<uint32_t>(buffer);
   maxSeed = std::max(seed, mySeed);
+  std::string remoteVersion = reader.ReadTerminatedString(buffer);
+  if (remoteVersion.compare(Game::Version) == 0) {
+    Logger::Log(LogLevel::net, "Version matched");
+  }
+  else {
+    Logger::Log(LogLevel::critical, "Version mismatch: Local `" + std::string(Game::Version) + "` vs. Remote `" + remoteVersion + "`");
+    Abort();
+    return;
+  }
 
   // mark handshake as completed
   this->remoteHandshake = true;
@@ -561,6 +601,9 @@ void DownloadScene::DownloadPlayerData(const Poco::Buffer<char>& buffer)
 
     // There was a problem creating the file
     SendDownloadComplete(false);
+  }
+  else {
+    Logger::Log(LogLevel::net, "Successfully downloaded opponent's Player mod");
   }
 }
 
@@ -731,7 +774,10 @@ void DownloadScene::onUpdate(double elapsed)
 {
   if (!(packetProcessor->IsHandshakeAck() && remoteHandshake) && !aborting) return;
 
-  if (!hasTradedData) {
+  // Don't trade data until handshake has arrived.
+  // Handshake is ignored and connection aborted on version mismatch, so this
+  // will keep package data from trading even though we're going to abort.
+  if (!hasTradedData && remoteHandshake) {
     hasTradedData = true;
 
     this->TradeBlockPackageData(playerBlockPackageList);

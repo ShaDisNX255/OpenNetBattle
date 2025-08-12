@@ -5,39 +5,59 @@
 #include "mmbn.ico.c"
 #include "bnShaderType.h"
 #include "bnShaderResourceManager.h"
+#include "bnResourceHandle.h"
+
+static ResourceHandle rHandle{};
 
 void DrawWindow::Initialize(const std::string& title, DrawWindow::WindowMode mode)
 {
-  this->title = title;
+    this->title = title;
 
-  // center, size
-  view = sf::View(sf::Vector2f(240, 160), sf::Vector2f(480, 320));
-  cam = std::make_shared<Camera>(view);
+    view = sf::View(sf::Vector2f(240.f, 160.f), sf::Vector2f(480.f, 320.f));
+    cam = std::make_shared<Camera>(view);
 
-  if (window) delete window;
-  window = nullptr;
+    if (window) { delete window; window = nullptr; }
 
 #ifdef __ANDROID__
-  // TODO: does the engine need to find the smallest or does this ratio work
-  // auto videoMode = VideoMode::getFullscreenModes().front();
-  videoMode.width = unsigned int(480.0f);
-  videoMode.height = unsigned int(320.0f);
+    // Pick a fixed size; the view handles scaling.
+    auto videoMode = sf::VideoMode::getFullscreenModes().front();
+    videoMode.width  = 480u;
+    videoMode.height = 320u;
+
+    // Request GLES2 explicitly on Android
+    sf::ContextSettings settings;
+    settings.majorVersion = 2;
+    settings.minorVersion = 0;
 #else
-  auto videoMode = VideoMode(480, 320);
+    auto videoMode = sf::VideoMode(480u, 320u);
+    sf::ContextSettings settings; // defaults are fine on desktop
 #endif
-  auto style = sf::Style::Default;
 
-  if (mode == WindowMode::fullscreen) {
-      style = sf::Style::Fullscreen;
-  }
+    auto style = (mode == WindowMode::fullscreen) ? sf::Style::Fullscreen
+                                                  : sf::Style::Default;
 
-  window = new RenderWindow(videoMode, title, style);
+    window = new sf::RenderWindow(videoMode, title, style, settings);
+    bool activeNow = window->setActive(true);
+    __android_log_print(ANDROID_LOG_INFO, "OpenNetBattle",
+        "RenderWindow created; setActive=%s", activeNow ? "true" : "false");
 
-  Resize((int)view.getSize().x, (int)view.getSize().y);
+    // Make the GL context current on THIS thread *before* any GL/resource work
+    if (!window->setActive(true)) {
+        __android_log_print(ANDROID_LOG_ERROR, "OpenNetBattle",
+                            "RenderWindow context activation failed");
+        // Fallback: try once more, or abort cleanly
+        // return; // or throw; make sure caller handles failure
+    } else {
+        __android_log_print(ANDROID_LOG_INFO, "OpenNetBattle",
+                            "RenderWindow created and context active");
+    }
+    window->setActive(true);
+    Resize((int)view.getSize().x, (int)view.getSize().y);
 
-  window->setFramerateLimit(frame_time_t::frames_per_second);
-  window->setIcon(sfml_icon.width, sfml_icon.height, sfml_icon.pixel_data);
+    window->setFramerateLimit(frame_time_t::frames_per_second);
+    window->setIcon(sfml_icon.width, sfml_icon.height, sfml_icon.pixel_data);
 }
+
 
 void DrawWindow::Draw(Drawable& _drawable, bool applyShaders) {
   if (!HasRenderSurface()) return;
@@ -47,7 +67,7 @@ void DrawWindow::Draw(Drawable& _drawable, bool applyShaders) {
 
 #ifdef __ANDROID__
     if(!stateCopy.shader) {
-      stateCopy.shader = SHADERS.GetShader(ShaderType::DEFAULT);
+        stateCopy.shader = rHandle.Shaders().GetShader(ShaderType::DEFAULT);
     }
 #endif 
 
@@ -185,10 +205,10 @@ void DrawWindow::SetShader(sf::Shader* shader) {
 
 #ifdef __ANDROID__
   if (shader == nullptr) {
-    state.shader = SHADERS.GetShader(ShaderType::DEFAULT);
+      state.shader = rHandle.Shaders().GetShader(ShaderType::DEFAULT);
 
     if(HasRenderSurface()) {
-      surface->setDefaultShader(SHADERS.GetShader(ShaderType::DEFAULT));
+        surface->setDefaultShader(rHandle.Shaders().GetShader(ShaderType::DEFAULT));
     }
   } else {
     state.shader = shader;

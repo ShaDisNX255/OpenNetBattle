@@ -92,6 +92,7 @@ namespace Overworld {
 #ifdef __ANDROID__
     void StartupTouchControls();
     void ShutdownTouchControls();
+    bool releasedB;
 #endif
 
   protected:

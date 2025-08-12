@@ -2,6 +2,7 @@
 #include <Swoosh/ActivityController.h>
 #include <atomic>
 #include <thread>
+#include <memory>
 
 #include "cxxopts/cxxopts.hpp"
 #include "bnTaskGroup.h"
@@ -71,7 +72,7 @@ private:
 #ifdef BN_MOD_SUPPORT 
   ScriptResourceManager scriptManager;
 #endif
-  InputManager inputManager;
+  std::unique_ptr<InputManager> inputManager;
   NetManager netManager;
 
   CardPackagePartitioner* cardPackagePartitioner{ nullptr };
@@ -164,6 +165,7 @@ public:
   static char* LocalPartition;
   static char* RemotePartition;
   static char* ServerPartition;
+  static char* Version;
 
   ConfigSettings& ConfigSettings();
   GameSession& Session();

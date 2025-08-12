@@ -97,8 +97,7 @@ void InputManager::Update()
   textBuffer.HandleCompletedEventProcessing();
 
 #ifdef __ANDROID__
-  state.clear(); // TODO: what inputs get stuck in the event list on droid?
-  TouchArea::poll();
+  TouchArea::poll(static_cast<sf::RenderWindow&>(window));
 #endif
   this->mutex.unlock();
 }

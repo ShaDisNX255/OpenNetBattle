@@ -7,6 +7,7 @@
 #include "Android/bnTouchArea.h"
 #include "../../bnBlockPackageManager.h"
 #include "../../bnPlayerCustScene.h"
+
 constexpr float PIXEL_MAX = 50.0f;
 constexpr float PIXEL_SPEED = 180.0f;
 
@@ -144,7 +145,7 @@ void SelectMobScene::onUpdate(double elapsed) {
 
             // Go to previous mob
             selectInputCooldown = maxSelectInputCooldown;
-            mobSelectionIndex++;
+            mobSelectionId = getController().MobPackagePartitioner().GetPartition(Game::LocalPartition).GetPackageBefore(mobSelectionId);
 
             // Number scramble effect
             numberCooldown = maxNumberCooldown;
@@ -154,17 +155,18 @@ void SelectMobScene::onUpdate(double elapsed) {
 
             // Go to next mob
             selectInputCooldown = maxSelectInputCooldown;
-            mobSelectionIndex--;
+            mobSelectionId = getController().MobPackagePartitioner().GetPartition(Game::LocalPartition).GetPackageAfter(mobSelectionId);
 
             // Number scramble effect
             numberCooldown = maxNumberCooldown;
         }
 
-        if (Input().Has(PRESSED_B)) {
+        if (Input().Has(InputEvents::pressed_shoot)) {
             // Fade out black and go back to the menu
             gotoNextScene = true;
             Audio().Play(AudioType::CHIP_DESC_CLOSE);
-            using segue = swoosh::intent::segue<BlackWashFade, swoosh::intent::milli<500>>;
+            using namespace swoosh::types;
+            using segue = segue<BlackWashFade, milli<500>>;
             getController().pop<segue>();
         }
     }
@@ -181,9 +183,8 @@ void SelectMobScene::onUpdate(double elapsed) {
 #ifdef __ANDROID__
   if(canSwipe) {
       if (sf::Touch::isDown(0)) {
-          sf::Vector2i touchPosition = sf::Touch::getPosition(0, *ENGINE.GetWindow());
-          sf::Vector2f coords = ENGINE.GetWindow()->mapPixelToCoords(touchPosition,
-                                                                     ENGINE.GetDefaultView());
+          sf::Vector2i touchPosition = sf::Touch::getPosition(0, getController().getWindow());
+          sf::Vector2f coords = getController().getWindow().mapPixelToCoords(touchPosition, getView());
           sf::Vector2i iCoords = sf::Vector2i((int) coords.x, (int) coords.y);
           touchPosition = iCoords;
 
@@ -207,7 +208,7 @@ void SelectMobScene::onUpdate(double elapsed) {
           touchStart = false;
       }
   } else {
-      if(prevSelect == mobSelectionIndex) {
+      if(prevSelectId == mobSelectionId) {
           auto x = swoosh::ease::interpolate(0.5f, mobSpr.getPosition().x, 110.f);
           auto y = swoosh::ease::interpolate(0.5f, mobSpr.getPosition().y, 130.f);
           mobSpr.setPosition(x, y);
@@ -600,30 +601,30 @@ void SelectMobScene::onEnd() {
 
 #ifdef __ANDROID__
 void SelectMobScene::StartupTouchControls() {
-  /* Android touch areas*/
-  TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
+    /* Android touch areas*/
+    TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
 
-  releasedB = false;
+    releasedB = false;
 
-  rightSide.enableExtendedRelease(true);
+    rightSide.enableExtendedRelease(true);
 
-  rightSide.onTouch([]() {
-      INPUTx.VirtualKeyEvent(InputEvent::RELEASED_A);
-  });
+    rightSide.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::released_use_chip);
+    });
 
-  rightSide.onRelease([this](sf::Vector2i delta) {
-      if(!releasedB) {
-        INPUTx.VirtualKeyEvent(InputEvent::PRESSED_A);
-      }
-  });
+    rightSide.onRelease([this](sf::Vector2i delta) {
+        if(!releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
+        }
+    });
 
-  rightSide.onDrag([this](sf::Vector2i delta){
-      if(delta.x < -25 && !releasedB) {
-        INPUTx.VirtualKeyEvent(InputEvent::PRESSED_B);
-        INPUTx.VirtualKeyEvent(InputEvent::RELEASED_B);
-        releasedB = true;
-      }
-  });
+    rightSide.onDrag([this](sf::Vector2i delta){
+        if(delta.x < -25 && !releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_shoot);
+            Input().VirtualKeyEvent(InputEvents::released_shoot);
+            releasedB = true;
+        }
+    });
 }
 
 void SelectMobScene::ShutdownTouchControls() {

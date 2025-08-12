@@ -45,7 +45,7 @@ sf::Shader* ShaderResourceManager::LoadShaderFromFile(string _path)
 
   if (!result)
   {
-    Logger::Log("Error loading shader: " + _path);
+    Logger::Log(LogLevel::debug, ("Error loading shader: " + _path));
 
     return nullptr;
   }

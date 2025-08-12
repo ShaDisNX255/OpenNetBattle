@@ -77,37 +77,52 @@ int main(int argc, char** argv) {
   // Prevent throwing exceptions on bad input
   options.allow_unrecognised_options();
 
- try {
-    cxxopts::ParseResult parsedOptions = options.parse(argc, argv);
+    try {
+        // Build the ParseResult directly (no default ctor)
+#ifdef __ANDROID__
+        // Android has no real argv; give cxxopts a minimal, valid one
+        int   fake_argc = 1;
+        char  app_name[] = "OpenNetBattle";
+        char* argv_storage[] = { app_name, nullptr }; // argv[argc] must be nullptr
+        char** fake_argv = argv_storage;
 
-    // Check for help, print, and quit early
-    if (parsedOptions.count("help")) {
-      std::cout << options.help() << std::endl;
-      return EXIT_SUCCESS;
+        auto parsedOptions = options.parse(fake_argc, fake_argv);
+#else
+        auto parsedOptions = options.parse(argc, argv);
+#endif
+
+        // Check for help, print, and quit early
+        if (parsedOptions.count("help")) {
+#ifndef __ANDROID__
+            std::cout << options.help() << std::endl;
+#else
+            Logger::Log(LogLevel::info, options.help());
+            // or: __android_log_print(ANDROID_LOG_INFO, "OpenNetBattle", "%s", options.help().c_str());
+#endif
+            return EXIT_SUCCESS;
+        }
+
+        DrawWindow win;
+        win.Initialize("Open Net Battle v" + std::string(Game::Version), DrawWindow::WindowMode::window);
+        Game game{ win };
+
+        // Start the app
+        if (LaunchGame(game, parsedOptions) == EXIT_SUCCESS) {
+            game.Run(); // blocking
+        }
+    }
+    catch (const cxxopts::missing_argument_exception& e) {
+        Logger::Log(LogLevel::critical, e.what());
+    }
+    catch (const std::exception& e) {
+        Logger::Log(LogLevel::critical, e.what());
+    }
+    catch (...) {
+        Logger::Log(LogLevel::critical, "Game encountered an unknown exception. Aborting.");
     }
 
-    DrawWindow win;
-    win.Initialize("Open Net Battle v2.0a", DrawWindow::WindowMode::window);
-    Game game{ win };
+    return EXIT_SUCCESS;
 
-    // Go the the title screen to kick off the rest of the app
-    if (LaunchGame(game, parsedOptions) == EXIT_SUCCESS) {
-      // blocking
-      game.Run();
-    }
-  }
-  catch (cxxopts::missing_argument_exception& e) {
-    Logger::Log(LogLevel::critical, e.what());
-  }
-  catch (std::exception& e) {
-    Logger::Log(LogLevel::critical, e.what());
-  }
-  catch (...) {
-    Logger::Log(LogLevel::critical, "Game encountered an unknown exception. Aborting.");
-  }
-
-  // finished
-  return EXIT_SUCCESS;
 }
 
 void ParseErrorLevel(std::string in) {
@@ -138,6 +153,8 @@ void ParseErrorLevel(std::string in) {
   processSettings("warning", LogLevel::warning);
   processSettings("debug", LogLevel::debug);
   processSettings("info", LogLevel::info);
+  processSettings("net", LogLevel::net);
+
 
   if (settings["all"]) {
     level = LogLevel::all;

@@ -108,8 +108,8 @@ void TimeFreezeBattleState::onStart(const BattleSceneState*)
 
 void TimeFreezeBattleState::onEnd(const BattleSceneState*)
 {
-  BattleSceneBase& scene = GetScene();
   Logger::Logf(LogLevel::info, "TimeFreezeBattleState::onEnd");
+  BattleSceneBase& scene = GetScene();
   scene.GetSelectedCardsUI().Reveal();
   scene.GetField()->ToggleTimeFreeze(false);
   scene.HighlightTiles(false);
@@ -118,6 +118,7 @@ void TimeFreezeBattleState::onEnd(const BattleSceneState*)
   summonStart = false;
   summonTick = frames(0);
   startState = state::fadein; // assume fadein for most time freezes
+  currState = startState;
 }
 
 void TimeFreezeBattleState::onUpdate(double elapsed)

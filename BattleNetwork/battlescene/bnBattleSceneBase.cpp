@@ -659,7 +659,7 @@ void BattleSceneBase::onUpdate(double elapsed) {
 
   // State update
   if (!current) return;
-
+  
   if (skipFrame) {
     skipFrame = false;
     return;
@@ -1387,8 +1387,7 @@ void BattleSceneBase::FlushLocalPlayerInputQueue()
   queuedLocalEvents.clear();
 }
 
-std::vector<InputEvent> BattleSceneBase::ProcessLocalPlayerInputQueue(unsigned int lag)
-{
+std::vector<InputEvent> BattleSceneBase::ProcessLocalPlayerInputQueue(unsigned int lag, bool gatherInput) {
   std::vector<InputEvent> outEvents;
 
   if (!localPlayer) return outEvents;
@@ -1398,21 +1397,29 @@ std::vector<InputEvent> BattleSceneBase::ProcessLocalPlayerInputQueue(unsigned i
     item.wait--;
   }
 
-  // For all new input events, set the wait time based on the network latency and append
-  const auto events_this_frame = Input().StateThisFrame();
+  
+  if (gatherInput) {
+    // For all new input events, set the wait time based on the network latency and append
+    const auto events_this_frame = Input().StateThisFrame();
 
-  for (auto& [name, state] : events_this_frame) {
-    InputEvent copy;
-    copy.name = name;
-    copy.state = state;
+    for (auto& [name, state] : events_this_frame) {
+     // if (state != InputState::pressed && state != InputState::held) {
+     //   let VirtualInputState resolve release
+     //   continue;
+     // }
 
-    outEvents.push_back(copy);
+      InputEvent copy = InputEvent{ name, state };
+     // copy.name = name;
+     // copy.state = InputState::pressed; // VirtualInputState will handle this
 
-    // add delay for network
-    copy.wait = lag;
-    queuedLocalEvents.push_back(copy);
+      outEvents.push_back(copy);
+
+      // add delay for network
+      copy.wait = lag;
+      queuedLocalEvents.push_back(copy);
+    }
   }
-
+  
   // Drop inputs that are already processed at the end of the last frame
   for (auto iter = queuedLocalEvents.begin(); iter != queuedLocalEvents.end();) {
     if (iter->wait <= 0) {
@@ -1424,6 +1431,7 @@ std::vector<InputEvent> BattleSceneBase::ProcessLocalPlayerInputQueue(unsigned i
     iter++;
   }
 
+ // localPlayer->InputState().Process();
   return outEvents;
 }
 
@@ -1435,76 +1443,76 @@ void BattleSceneBase::onLeave() {
 
 #ifdef __ANDROID__
 void BattleSceneBase::SetupTouchControls() {
-  /* Android touch areas*/
-  TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
+    /* Android touch areas*/
+    TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
 
-  rightSide.enableExtendedRelease(true);
-  releasedB = false;
-
-  rightSide.onTouch([this]() {
-    Input().VirtualKeyEvent(InputEvents::released_use_chip);
-    });
-
-  rightSide.onRelease([this](sf::Vector2i delta) {
-    if (!releasedB) {
-      Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
-    }
-
+    rightSide.enableExtendedRelease(true);
     releasedB = false;
 
+    rightSide.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::released_use_chip);
     });
 
-  rightSide.onDrag([this](sf::Vector2i delta) {
-    if (delta.x < -25 && !releasedB) {
-      Input().VirtualKeyEvent(InputEvents::pressed_shoot);
-      Input().VirtualKeyEvent(InputEvents::released_shoot);
-      releasedB = true;
-    }
+    rightSide.onRelease([this](sf::Vector2i delta) {
+        if (!releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
+        }
+
+        releasedB = false;
+
     });
 
-  rightSide.onDefault([this]() {
-    releasedB = false;
+    rightSide.onDrag([this](sf::Vector2i delta) {
+        if (delta.x < -25 && !releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_shoot);
+            Input().VirtualKeyEvent(InputEvents::released_shoot);
+            releasedB = true;
+        }
     });
 
-  TouchArea& custSelectButton = TouchArea::create(sf::IntRect(100, 0, 380, 100));
-  custSelectButton.onTouch([this]() {
-    Input().VirtualKeyEvent(InputEvents::pressed_pause);
-    });
-  custSelectButton.onRelease([this](sf::Vector2i delta) {
-    Input().VirtualKeyEvent(InputEvents::released_pause);
+    rightSide.onDefault([this]() {
+        releasedB = false;
     });
 
-  TouchArea& dpad = TouchArea::create(sf::IntRect(0, 0, 240, 320));
-  dpad.enableExtendedRelease(true);
-  dpad.onDrag([this](sf::Vector2i delta) {
-    Logger::Log(LogLevel::debug, ("dpad delta: " + std::to_string(delta.x) + ", " + std::to_string(delta.y)));
-
-    if (delta.x > 30) {
-      Input().VirtualKeyEvent(InputEvents::pressed_move_right);
-    }
-
-    if (delta.x < -30) {
-      Input().VirtualKeyEvent(InputEvents::pressed_move_left);
-    }
-
-    if (delta.y > 30) {
-      Input().VirtualKeyEvent(InputEvents::pressed_move_down);
-    }
-
-    if (delta.y < -30) {
-      Input().VirtualKeyEvent(InputEvents::pressed_move_up);
-    }
+    TouchArea& custSelectButton = TouchArea::create(sf::IntRect(100, 0, 380, 100));
+    custSelectButton.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::pressed_pause);
+    });
+    custSelectButton.onRelease([this](sf::Vector2i delta) {
+        Input().VirtualKeyEvent(InputEvents::released_pause);
     });
 
-  dpad.onRelease([this](sf::Vector2i delta) {
-    if (delta.x < -30) {
-      Input().VirtualKeyEvent(InputEvents::released_move_left);
-    }
+    TouchArea& dpad = TouchArea::create(sf::IntRect(0, 0, 240, 320));
+    dpad.enableExtendedRelease(true);
+    dpad.onDrag([this](sf::Vector2i delta) {
+        Logger::Log(LogLevel::debug, ("dpad delta: " + std::to_string(delta.x) + ", " + std::to_string(delta.y)));
+
+        if (delta.x > 30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_right);
+        }
+
+        if (delta.x < -30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_left);
+        }
+
+        if (delta.y > 30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_down);
+        }
+
+        if (delta.y < -30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_up);
+        }
+    });
+
+    dpad.onRelease([this](sf::Vector2i delta) {
+        if (delta.x < -30) {
+            Input().VirtualKeyEvent(InputEvents::released_move_left);
+        }
     });
 }
 
 void BattleSceneBase::ShutdownTouchControls() {
-  TouchArea::free();
+    TouchArea::free();
 }
 
 #endif

@@ -202,9 +202,9 @@ void FolderScene::onUpdate(double elapsed) {
   if (enterText) {
     InputEvent  cancelButton = InputEvents::released_cancel;
 
-#ifdef __ANDROID__
+/*ifdef __ANDROID__
     cancelButton = PRESSED_B;
-#endif
+#endif*/
 
     if (Input().Has(cancelButton)) {
 #ifdef __ANDROID__
@@ -437,13 +437,12 @@ void FolderScene::onUpdate(double elapsed) {
 
 #ifdef __ANDROID__
   if(canSwipe) {
-      Logger::Log("touch is down");
+      Logger::Log(LogLevel::debug, ("touch is down"));
 
       if (sf::Touch::isDown(0)) {
 
-      sf::Vector2i touchPosition = sf::Touch::getPosition(0, *ENGINE.GetWindow());
-      sf::Vector2f coords = ENGINE.GetWindow()->mapPixelToCoords(touchPosition,
-                                                                 ENGINE.GetDefaultView());
+      sf::Vector2i touchPosition = sf::Touch::getPosition(0, getController().getWindow());
+      sf::Vector2f coords = getController().getWindow().mapPixelToCoords(touchPosition, getView());
       sf::Vector2i iCoords = sf::Vector2i((int) coords.x, (int) coords.y);
       touchPosition = iCoords;
 
@@ -457,7 +456,7 @@ void FolderScene::onUpdate(double elapsed) {
 
           touchPosX = touchPosition.x;
           folderOffsetX = (touchPosStartX - touchPosX);
-          Logger::Log("folderOffsetX: " + std::to_string(folderOffsetX));
+          Logger::Log(LogLevel::debug, ("folderOffsetX: " + std::to_string(folderOffsetX)));
 
           canSwipe = true;
       } else if(folderOffsetX > 100){
@@ -766,13 +765,13 @@ void FolderScene::StartupTouchControls() {
 
     rightSide.enableExtendedRelease(true);
 
-    rightSide.onTouch([]() {
-        Input().VirtualKeyEvent(InputEvent::RELEASED_A);
+    rightSide.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::released_use_chip);
     });
 
     rightSide.onRelease([this](sf::Vector2i delta) {
         if(!releasedB) {
-            Input().VirtualKeyEvent(InputEvent::PRESSED_A);
+            Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
         }
 
         releasedB = false;
@@ -780,8 +779,8 @@ void FolderScene::StartupTouchControls() {
 
     rightSide.onDrag([this](sf::Vector2i delta){
         if(delta.x < -25 && !releasedB && !touchStart) {
-            Input().VirtualKeyEvent(InputEvent::PRESSED_B);
-            Input().VirtualKeyEvent(InputEvent::RELEASED_B);
+            Input().VirtualKeyEvent(InputEvents::pressed_shoot);
+            Input().VirtualKeyEvent(InputEvents::released_shoot);
             releasedB = true;
         }
     });

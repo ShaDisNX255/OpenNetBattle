@@ -40,6 +40,7 @@
 char* Game::LocalPartition = "";
 char* Game::RemotePartition = "pvp";
 char* Game::ServerPartition = "server";
+char* Game::Version = "2.0.6a";
 
 Game::Game(DrawWindow& window) :
   window(window), 
@@ -49,7 +50,6 @@ Game::Game(DrawWindow& window) :
   textureManager(),
   audioManager(),
   shaderManager(),
-  inputManager(*window.GetRenderWindow()),
   ActivityController(*window.GetRenderWindow()) {
   
   // figure out system endianness
@@ -99,11 +99,12 @@ Game::Game(DrawWindow& window) :
   unsigned int win_x = static_cast<unsigned int>(window.GetView().getSize().x);
   unsigned int win_y = static_cast<unsigned int>(window.GetView().getSize().y);
 
+  window.GetRenderWindow()->setActive(true);
   renderSurface.create(win_x, win_y, window.GetRenderWindow()->getSettings());
 
   // Use our external render surface as the game's screen
   window.SetRenderSurface(renderSurface);
-  window.GetRenderWindow()->setActive(false);
+  //window.GetRenderWindow()->setActive(false);
 }
 
 Game::~Game() {
@@ -249,6 +250,7 @@ TaskGroup Game::Boot(const cxxopts::ParseResult& values)
   spinnerAnimator = Animation("resources/ui/spinner.animation") << "SPIN" << Animator::Mode::Loop;
 
   if (!singlethreaded) {
+	window.GetRenderWindow()->setActive(false);
     renderThread = std::thread(&Game::ProcessFrame, this);
   }
 

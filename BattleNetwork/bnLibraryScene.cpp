@@ -411,31 +411,31 @@ void LibraryScene::onEnd() {
 
 #ifdef __ANDROID__
 void LibraryScene::StartupTouchControls() {
-  /* Android touch areas*/
-  TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
+    /* Android touch areas*/
+    TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
 
-  rightSide.enableExtendedRelease(true);
+    rightSide.enableExtendedRelease(true);
 
-  rightSide.onTouch([]() {
-      INPUTx.VirtualKeyEvent(InputEvent::RELEASED_A);
-  });
+    rightSide.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::released_use_chip);
+    });
 
-  rightSide.onRelease([this](sf::Vector2i delta) {
-      if(!releasedB) {
-        INPUTx.VirtualKeyEvent(InputEvent::PRESSED_A);
-      }
-  });
+    rightSide.onRelease([this](sf::Vector2i delta) {
+        if(!releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
+        }
+    });
 
-  rightSide.onDrag([this](sf::Vector2i delta){
-      if(delta.x < -25 && !releasedB) {
-        INPUTx.VirtualKeyEvent(InputEvent::PRESSED_B);
-        INPUTx.VirtualKeyEvent(InputEvent::RELEASED_B);
-        releasedB = true;
-      }
-  });
+    rightSide.onDrag([this](sf::Vector2i delta){
+        if(delta.x < -25 && !releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_shoot);
+            Input().VirtualKeyEvent(InputEvents::released_shoot);
+            releasedB = true;
+        }
+    });
 }
 
 void LibraryScene::ShutdownTouchControls() {
-  TouchArea::free();
+    TouchArea::free();
 }
 #endif

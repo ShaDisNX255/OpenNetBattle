@@ -1,27 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.themaverickprogrammer.battlenetwork">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-feature android:required="true" android:glEsVersion="0x00020000"/>
+    <uses-permission android:name="android.permission/VIBRATE"/>
+    <uses-feature android:glEsVersion="0x00020000" android:required="true"/>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:launchMode="singleInstance"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:launchMode="singleInstance">
 
-        <activity android:screenOrientation="landscape" android:name="com.themaverickprogrammer.battlenetwork.MainActivity">
-            <meta-data android:name="android.app.lib_name"
-                       android:value="native-lib" />
+        <!-- Use SFML's Java activity -->
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:configChanges="orientation|keyboard|keyboardHidden|navigation|screenLayout|screenSize|uiMode">
+
+            <!-- Tell Android to load the SFML native bootstrapper -->
+            <meta-data android:name="android.app.lib_name" android:value="${sfmlBootstrap}"/>
+
+            <!-- Tell SFML which of YOUR libs to load (CMake target name, no 'lib' prefix) -->
+            <meta-data android:name="sfml.app.lib_name" android:value="native-lib"/>
+
+            <!-- (Optional) preload other shared libs your app depends on -->
+            <meta-data android:name="sfml.app.shared_libs" android:value="openal,fluidsynth"/>
+
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
     </application>
-
 </manifest>

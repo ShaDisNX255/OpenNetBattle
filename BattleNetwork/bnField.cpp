@@ -584,7 +584,7 @@ void Field::UpdateEntityOnce(Entity& entity, const double elapsed)
 
   if (elapsed > 0.0) {
     // This is a refresh frame, not an update frame
-    // Do not process inputs on refresh
+    // Do not process inputs on refresh 
     entity.InputState().Process();
   }
 

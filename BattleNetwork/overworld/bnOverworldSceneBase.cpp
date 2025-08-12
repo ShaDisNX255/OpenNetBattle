@@ -1033,103 +1033,75 @@ const bool Overworld::SceneBase::IsMouseHovering(const sf::Vector2f& mouse, cons
 
 #ifdef __ANDROID__
 void Overworld::SceneBase::StartupTouchControls() {
-  ui.setScale(2.f, 2.f);
+    /* Android touch areas*/
+    TouchArea& rightSide = TouchArea::create(sf::IntRect(240, 0, 240, 320));
 
-  uiAnimator.SetAnimation("CHIP_FOLDER_LABEL");
-  uiAnimator.SetFrame(1, ui);
-  ui.setPosition(100.f, 50.f);
+    rightSide.enableExtendedRelease(true);
+    releasedB = false;
 
-  auto bounds = ui.getGlobalBounds();
-  auto rect = sf::IntRect(int(bounds.left), int(bounds.top), int(bounds.width), int(bounds.height));
-  auto& folderBtn = TouchArea::create(rect);
+    rightSide.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::released_use_chip);
+    });
 
-  folderBtn.onRelease([this](sf::Vector2i delta) {
-    Logger::Log("folder released");
+    rightSide.onRelease([this](sf::Vector2i delta) {
+        if (!releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_use_chip);
+        }
 
-    Audio().Play(AudioType::CHIP_DESC);
+        releasedB = false;
 
-    using swoosh::intent::direction;
-    using segue = swoosh::intent::segue<PushIn<direction::left>, swoosh::intent::milli<500>>;
-    getController().push<segue::to<FolderScene>>(data);
-  });
+    });
 
-  folderBtn.onTouch([this]() {
-    menuSelectionIndex = 0;
-  });
+    rightSide.onDrag([this](sf::Vector2i delta) {
+        if (delta.x < -25 && !releasedB) {
+            Input().VirtualKeyEvent(InputEvents::pressed_shoot);
+            Input().VirtualKeyEvent(InputEvents::released_shoot);
+            releasedB = true;
+        }
+    });
 
-  uiAnimator.SetAnimation("LIBRARY_LABEL");
-  uiAnimator.SetFrame(1, ui);
-  ui.setPosition(100.f, 120.f);
+    rightSide.onDefault([this]() {
+        releasedB = false;
+    });
 
-  bounds = ui.getGlobalBounds();
-  rect = sf::IntRect(int(bounds.left), int(bounds.top), int(bounds.width), int(bounds.height));
+    TouchArea& custSelectButton = TouchArea::create(sf::IntRect(100, 0, 380, 100));
+    custSelectButton.onTouch([this]() {
+        Input().VirtualKeyEvent(InputEvents::pressed_pause);
+    });
+    custSelectButton.onRelease([this](sf::Vector2i delta) {
+        Input().VirtualKeyEvent(InputEvents::released_pause);
+    });
 
-  Logger::Log(std::string("rect: ") + std::to_string(rect.left) + ", " + std::to_string(rect.top) + ", " + std::to_string(rect.width) + ", " + std::to_string(rect.height));
+    TouchArea& dpad = TouchArea::create(sf::IntRect(0, 0, 240, 320));
+    dpad.enableExtendedRelease(true);
+    dpad.onDrag([this](sf::Vector2i delta) {
+        Logger::Log(LogLevel::debug, ("dpad delta: " + std::to_string(delta.x) + ", " + std::to_string(delta.y)));
 
-  auto& libraryBtn = TouchArea::create(rect);
+        if (delta.x > 30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_right);
+        }
 
-  libraryBtn.onRelease([this](sf::Vector2i delta) {
-    Logger::Log("library released");
+        if (delta.x < -30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_left);
+        }
 
-    Audio().Play(AudioType::CHIP_DESC);
+        if (delta.y > 30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_down);
+        }
 
-    using swoosh::intent::direction;
-    using segue = swoosh::intent::segue<PushIn<direction::right>>;
-    getController().push<segue::to<LibraryScene>, swoosh::intent::milli<500>>();
-  });
+        if (delta.y < -30) {
+            Input().VirtualKeyEvent(InputEvents::pressed_move_up);
+        }
+    });
 
-  libraryBtn.onTouch([this]() {
-    menuSelectionIndex = 1;
-  });
-
-
-  uiAnimator.SetAnimation("NAVI_LABEL");
-  uiAnimator.SetFrame(1, ui);
-  ui.setPosition(100.f, 190.f);
-
-  bounds = ui.getGlobalBounds();
-  rect = sf::IntRect(int(bounds.left), int(bounds.top), int(bounds.width), int(bounds.height));
-  auto& naviBtn = TouchArea::create(rect);
-
-  naviBtn.onRelease([this](sf::Vector2i delta) {
-    Audio().Play(AudioType::CHIP_DESC);
-    using segue = swoosh::intent::segue<Checkerboard, swoosh::intent::milli<500>>;
-    using intent = segue::to<SelectNaviScene>;
-    getController().push<intent>(currentNavi);
-  });
-
-  naviBtn.onTouch([this]() {
-    menuSelectionIndex = 2;
-  });
-
-  uiAnimator.SetAnimation("MOB_SELECT_LABEL");
-  uiAnimator.SetFrame(1, ui);
-  ui.setPosition(100.f, 260.f);
-
-  bounds = ui.getGlobalBounds();
-  rect = sf::IntRect(int(bounds.left), int(bounds.top), int(bounds.width), int(bounds.height));
-  auto& mobBtn = TouchArea::create(rect);
-
-  mobBtn.onRelease([this](sf::Vector2i delta) {
-    CardFolder* folder = nullptr;
-
-    if (data.GetFolder("Default", folder)) {
-      Audio().Play(AudioType::CHIP_DESC);
-      using segue = swoosh::intent::segue<PixelateBlackWashFade, swoosh::intent::milli<500>>::to<SelectMobScene>;
-      getController().push<segue>(currentNavi, folder->Clone());
-    }
-    else {
-      Audio().Play(AudioType::CHIP_ERROR);
-      Logger::Log("Cannot proceed to mob select. Error selecting folder 'Default'.");
-    }
-  });
-
-  mobBtn.onTouch([this]() {
-    menuSelectionIndex = 3;
-  });
+    dpad.onRelease([this](sf::Vector2i delta) {
+        if (delta.x < -30) {
+            Input().VirtualKeyEvent(InputEvents::released_move_left);
+        }
+    });
 }
 
 void Overworld::SceneBase::ShutdownTouchControls() {
-  TouchArea::free();
+    TouchArea::free();
 }
 #endif
