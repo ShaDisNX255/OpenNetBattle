@@ -4,7 +4,8 @@
 	branch = master
 [submodule "extern/SFML"]
 	path = extern/SFML
-	url = https://github.com/TheMaverickProgrammer/SFML_ANDROID_ES_2
+	url = https://github.com/ShaDisNX255/SFML_ANDROID_ES_2.git
+	branch = PoC
 [submodule "breathe"]
 	path = breathe
 	url = https://github.com/michaeljones/breathe.git
